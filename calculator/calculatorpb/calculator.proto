@@ -3,19 +3,39 @@ syntax = "proto3";
 package calculator;
 option go_package = "calculatorpb";
 
-message Calculation{
+message Values{
     int32 a = 1;
     int32 b = 2;
 }
 
-message CalculateRequest{
-    Calculation calculation = 1;
+message SumRequest{
+    Values values = 1;
 }
 
-message CalculateResponse{
+message SumResponse{
     int32 result = 1;
 }
 
-service CalculateService{
-    rpc Calculate(CalculateRequest) returns (CalculateResponse){};
+message PrimeNumberDecompositionRequest{
+    int32 value = 1;
+}
+
+message PrimeNumberDecompositionResponse{
+    string result = 1;
+}
+
+message ComputeAverageRequest{
+    int32 value = 1;
+}
+
+message ComputeAverageResponse{
+    string result = 1;
+}
+
+service CalculatorService{
+    rpc Sum(SumRequest) returns (SumResponse){};
+
+    rpc PrimeNumberDecomposition(PrimeNumberDecompositionRequest) returns (stream PrimeNumberDecompositionResponse){};
+
+    rpc ComputeAverage(stream ComputeAverageRequest) returns (ComputeAverageResponse){};
 }

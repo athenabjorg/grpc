@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"strconv"
 
 	"github.com/athenabjorg/grpc/calculator/calculatorpb"
 	"google.golang.org/grpc"
@@ -12,14 +14,54 @@ import (
 
 type server struct{}
 
-func (*server) Calculate(ctx context.Context, req *calculatorpb.CalculateRequest) (*calculatorpb.CalculateResponse, error) {
-	fmt.Printf("Calculatefunciton was invoked with %v", req)
-	result := req.GetCalculation().GetA() + req.GetCalculation().GetB()
-	res := &calculatorpb.CalculateResponse{
+func (*server) Sum(ctx context.Context, req *calculatorpb.SumRequest) (*calculatorpb.SumResponse, error) {
+	fmt.Printf("Sum funciton was invoked with %v", req)
+	result := req.GetValues().GetA() + req.GetValues().GetB()
+	res := &calculatorpb.SumResponse{
 		Result: result,
 	}
 
 	return res, nil
+}
+
+func (*server) PrimeNumberDecomposition(req *calculatorpb.PrimeNumberDecompositionRequest, stream calculatorpb.CalculatorService_PrimeNumberDecompositionServer) error {
+	fmt.Printf("PrimeNumberDecomposition funciton was invoked with %v", req)
+	k := 2
+	n := int(req.GetValue())
+	for n > 1 {
+		if n%k == 0 {
+			res := &calculatorpb.PrimeNumberDecompositionResponse{
+				Result: strconv.Itoa(k),
+			}
+			stream.Send(res)
+			n = n / k
+		} else {
+			k++
+		}
+	}
+	return nil
+}
+
+func (*server) ComputeAverage(stream calculatorpb.CalculatorService_ComputeAverageServer) error {
+	fmt.Printf("ComputeAverage funciton was invoked with a streaming request\n")
+	result := 0.0
+	count := 0.0
+
+	for {
+		req, err := stream.Recv()
+
+		if err == io.EOF {
+			return stream.SendAndClose(&calculatorpb.ComputeAverageResponse{
+				Result: fmt.Sprintf("%.2f", result/count),
+			})
+		}
+		if err != nil {
+			log.Fatalf("Error while reading client stream: %v", err)
+		}
+
+		result += float64(req.GetValue())
+		count++
+	}
 }
 
 func main() {
@@ -31,7 +73,7 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	calculatorpb.RegisterCalculateServiceServer(s, &server{})
+	calculatorpb.RegisterCalculatorServiceServer(s, &server{})
 
 	err = s.Serve(lis)
 	if err != nil {
